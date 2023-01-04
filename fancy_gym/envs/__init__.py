@@ -229,6 +229,7 @@ for reward_type in ["Dense", "TemporalSparse", "TemporalSpatialSparse"]:
         id='BoxPushing{}-v0'.format(reward_type),
         entry_point='fancy_gym.envs.mujoco:BoxPushing{}'.format(reward_type),
         max_episode_steps=MAX_EPISODE_STEPS_BOX_PUSHING,
+        kwargs={'goal_switch_time': 20}
     )
 
 # Here we use the same reward as in BeerPong-v0, but now consider after the release,
