@@ -311,7 +311,7 @@ class BoxPushingTemporalSparse(BoxPushingEnvBase):
                     rod_tip_pos, rod_quat, qpos, qvel, action):
         reward = 0.
         joint_penalty = self._joint_limit_violate_penalty(qpos, qvel, enable_pos_limit=True, enable_vel_limit=True)
-        energy_cost = -0.0005 * np.sum(np.square(action))
+        energy_cost = -0.02 * np.sum(np.square(action))
         tcp_box_dist_reward = -2 * np.clip(np.linalg.norm(box_pos - rod_tip_pos), 0.05, 100)
         reward += joint_penalty + tcp_box_dist_reward + energy_cost
         rod_inclined_angle = rotation_distance(rod_quat, desired_rod_quat)
@@ -340,7 +340,7 @@ class BoxPushingTemporalSpatialSparse(BoxPushingEnvBase):
                     rod_tip_pos, rod_quat, qpos, qvel, action):
         reward = 0.
         joint_penalty = self._joint_limit_violate_penalty(qpos, qvel, enable_pos_limit=True, enable_vel_limit=True)
-        energy_cost = -0.0005 * np.sum(np.square(action))
+        energy_cost = -0.02 * np.sum(np.square(action))
         tcp_box_dist_reward = -2 * np.clip(np.linalg.norm(box_pos - rod_tip_pos), 0.05, 100)
         reward += joint_penalty + tcp_box_dist_reward + energy_cost
         rod_inclined_angle = rotation_distance(rod_quat, desired_rod_quat)
@@ -358,5 +358,6 @@ class BoxPushingTemporalSpatialSparse(BoxPushingEnvBase):
             box_goal_pos_dist_reward = np.clip(- 3.5 * box_goal_dist * 100 * 3, -100, 0)
             box_goal_rot_dist_reward = np.clip(- rotation_distance(box_quat, target_quat)/np.pi * 100 * 1.5, -100, 0)
             reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward
+            reward = reward / 10.
 
         return reward
