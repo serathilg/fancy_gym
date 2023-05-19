@@ -392,3 +392,13 @@ class BoxPushingTemporalSpatialSparse2(BoxPushingEnvBase):
             reward -= 300
 
         return reward
+
+if __name__=="__main__":
+    import fancy_gym
+    env = fancy_gym.make("BoxPushingTemporalSpatialSparse2-v0", seed=0)
+    env.reset()
+    for i in range(1000):
+        env.render()
+        obs, rew, done, info = env.step(env.action_space.sample())
+        if done:
+            env.reset()
