@@ -17,7 +17,8 @@ from .mujoco.hopper_throw.hopper_throw_in_basket import MAX_EPISODE_STEPS_HOPPER
 from .mujoco.reacher.reacher import ReacherEnv, MAX_EPISODE_STEPS_REACHER
 from .mujoco.walker_2d_jump.walker_2d_jump import MAX_EPISODE_STEPS_WALKERJUMP
 from .mujoco.box_pushing.box_pushing_env import BoxPushingDense, BoxPushingTemporalSparse, \
-                                                BoxPushingTemporalSpatialSparse, MAX_EPISODE_STEPS_BOX_PUSHING
+                                                BoxPushingTemporalSpatialSparse, BoxPushingTemporalSpatialSparse2,\
+                                                MAX_EPISODE_STEPS_BOX_PUSHING
 
 ALL_FANCY_MOVEMENT_PRIMITIVE_ENVIRONMENTS = {"DMP": [], "ProMP": [], "ProDMP": []}
 
@@ -224,7 +225,7 @@ register(
 )
 
 # Box pushing environments with different rewards
-for reward_type in ["Dense", "TemporalSparse", "TemporalSpatialSparse"]:
+for reward_type in ["Dense", "TemporalSparse", "TemporalSpatialSparse", "TemporalSpatialSparse2"]:
     register(
         id='BoxPushing{}-v0'.format(reward_type),
         entry_point='fancy_gym.envs.mujoco:BoxPushing{}'.format(reward_type),
@@ -465,7 +466,9 @@ for _v in _versions:
 # ########################################################################################################################
 
 ## Box Pushing
-_versions = ['BoxPushingDense-v0', 'BoxPushingTemporalSparse-v0', 'BoxPushingTemporalSpatialSparse-v0']
+_versions = ['BoxPushingDense-v0', 'BoxPushingTemporalSparse-v0',
+             'BoxPushingTemporalSpatialSparse-v0', 'BoxPushingTemporalSpatialSparse2-v0']
+
 for _v in _versions:
     _name = _v.split("-")
     _env_id = f'{_name[0]}ProMP-{_name[1]}'
