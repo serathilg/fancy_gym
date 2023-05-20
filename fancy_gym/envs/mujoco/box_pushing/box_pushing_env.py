@@ -86,7 +86,8 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
             'box_goal_rot_dist': box_goal_quat_dist,
             'episode_energy': 0. if not episode_end else self._episode_energy,
             'is_success': True if episode_end and box_goal_pos_dist < 0.05 and box_goal_quat_dist < 0.5 else False,
-            'num_steps': self._steps
+            'num_steps': self._steps,
+            'box_end_vel': 0. if not episode_end else np.linalg.norm(self.data.qpos[:7])
         }
         return obs, reward, episode_end, infos
 
@@ -382,6 +383,9 @@ class BoxPushingTemporalSpatialSparse2(BoxPushingEnvBase):
         if not episode_end:
             return reward
 
+        # Force the robot to stop at the end
+        reward += self._velocity_reward()
+
         box_goal_dist = np.linalg.norm(box_pos - target_pos)
 
         if box_goal_dist < 0.1:
@@ -393,12 +397,18 @@ class BoxPushingTemporalSpatialSparse2(BoxPushingEnvBase):
 
         return reward
 
+    def _velocity_reward(self):
+        vel = self.data.qvel[:7].copy()
+        return -10. * np.linalg.norm(vel)
+
+
 if __name__=="__main__":
     import fancy_gym
     env = fancy_gym.make("BoxPushingTemporalSpatialSparse2-v0", seed=0)
     env.reset()
     for i in range(1000):
-        env.render()
+        # env.render()
         obs, rew, done, info = env.step(env.action_space.sample())
         if done:
             env.reset()
+            print(f"box_end_velocity: {info['box_end_vel']}")
