@@ -328,9 +328,14 @@ class BoxPushingTemporalSparse(BoxPushingEnvBase):
         box_goal_pos_dist_reward = -3.5 * box_goal_dist * 100
         box_goal_rot_dist_reward = -rotation_distance(box_quat, target_quat) / np.pi * 100
 
-        reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward
+        reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward + self._velocity_reward()
 
         return reward
+
+    def _velocity_reward(self):
+        vel = self.data.qvel[:7].copy()
+        return -50. * np.linalg.norm(vel)
+
 
 class BoxPushingTemporalSpatialSparse(BoxPushingEnvBase):
 
@@ -399,12 +404,12 @@ class BoxPushingTemporalSpatialSparse2(BoxPushingEnvBase):
 
     def _velocity_reward(self):
         vel = self.data.qvel[:7].copy()
-        return -10. * np.linalg.norm(vel)
+        return -50. * np.linalg.norm(vel)
 
 
 if __name__=="__main__":
     import fancy_gym
-    env = fancy_gym.make("BoxPushingTemporalSpatialSparse2-v0", seed=0)
+    env = fancy_gym.make("BoxPushingTemporalSparse-v0", seed=0)
     env.reset()
     for i in range(1000):
         # env.render()
