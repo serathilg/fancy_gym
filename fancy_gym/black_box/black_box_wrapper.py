@@ -23,7 +23,8 @@ class BlackBoxWrapper(gym.ObservationWrapper):
                      Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray, int], bool]] = None,
                  reward_aggregation: Callable[[np.ndarray], float] = np.sum,
                  max_planning_times: int = np.inf,
-                 condition_on_desired: bool = False
+                 condition_on_desired: bool = False,
+                 discount_factor: float = 1.0,
                  ):
         """
         gym.Wrapper for leveraging a black box approach with a trajectory generator.
@@ -75,6 +76,7 @@ class BlackBoxWrapper(gym.ObservationWrapper):
 
         self.max_planning_times = max_planning_times
         self.plan_steps = 0
+        self.discount_factor = discount_factor
 
     def observation(self, observation):
         # return context space if we are
@@ -181,7 +183,7 @@ class BlackBoxWrapper(gym.ObservationWrapper):
                 break
 
         infos.update({k: v[:t + 1] for k, v in infos.items()})
-        self.current_traj_steps += t + 1
+        # self.current_traj_steps += t + 1
 
         if self.verbose >= 2:
             infos['positions'] = position
@@ -191,7 +193,9 @@ class BlackBoxWrapper(gym.ObservationWrapper):
             infos['step_rewards'] = rewards[:t + 1]
 
         infos['trajectory_length'] = t + 1
-        trajectory_return = self.reward_aggregation(rewards[:t + 1])
+        gamma = self.discount_factor ** np.arange(self.current_traj_steps, self.current_traj_steps + t + 1)
+        trajectory_return = self.reward_aggregation(gamma * rewards[:t + 1])
+        self.current_traj_steps += t + 1
         return self.observation(obs), trajectory_return, done, infos
 
     def render(self, **kwargs):
