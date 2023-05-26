@@ -425,15 +425,23 @@ class BoxPushingBruceSparse(BoxPushingEnvBase):
         box_goal_pos_dist_reward = -3.5 * box_goal_dist * 100
         box_goal_rot_dist_reward = -rotation_distance(box_quat, target_quat) / np.pi * 100
 
-        reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward
+        reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward + self._get_end_vel_penalty()
 
         return reward
+
+    def _get_end_vel_penalty(self):
+        rot_coeff = 100.
+        pos_coeff = 100.
+        box_rot_pos_vel = self._get_box_vel()
+        box_rot_vel = box_rot_pos_vel[:3]
+        box_pos_vel = box_rot_pos_vel[3:]
+        return -rot_coeff * np.linalg.norm(box_rot_vel) - pos_coeff * np.linalg.norm(box_pos_vel)
 
 
 
 if __name__=="__main__":
     import fancy_gym
-    env = fancy_gym.make("BoxPushingBruceSparseProMP-v0", seed=0)
+    env = fancy_gym.make("BoxPushingBruceSparse-v0", seed=0)
     env.reset()
     for i in range(1000):
         env.render()
