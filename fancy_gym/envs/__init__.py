@@ -18,7 +18,7 @@ from .mujoco.reacher.reacher import ReacherEnv, MAX_EPISODE_STEPS_REACHER
 from .mujoco.walker_2d_jump.walker_2d_jump import MAX_EPISODE_STEPS_WALKERJUMP
 from .mujoco.box_pushing.box_pushing_env import BoxPushingDense, BoxPushingTemporalSparse, \
                                                 BoxPushingTemporalSpatialSparse, BoxPushingTemporalSpatialSparse2,\
-                                                MAX_EPISODE_STEPS_BOX_PUSHING
+                                                BoxPushingBruceSparse, MAX_EPISODE_STEPS_BOX_PUSHING
 
 ALL_FANCY_MOVEMENT_PRIMITIVE_ENVIRONMENTS = {"DMP": [], "ProMP": [], "ProDMP": []}
 
@@ -227,7 +227,7 @@ register(
 )
 
 # Box pushing environments with different rewards
-for reward_type in ["Dense", "TemporalSparse", "TemporalSpatialSparse", "TemporalSpatialSparse2"]:
+for reward_type in ["Dense", "TemporalSparse", "TemporalSpatialSparse", "TemporalSpatialSparse2", "BruceSparse"]:
     register(
         id='BoxPushing{}-v0'.format(reward_type),
         entry_point='fancy_gym.envs.mujoco:BoxPushing{}'.format(reward_type),
@@ -469,7 +469,8 @@ for _v in _versions:
 
 ## Box Pushing
 _versions = ['BoxPushingDense-v0', 'BoxPushingTemporalSparse-v0',
-             'BoxPushingTemporalSpatialSparse-v0', 'BoxPushingTemporalSpatialSparse2-v0']
+             'BoxPushingTemporalSpatialSparse-v0', 'BoxPushingTemporalSpatialSparse2-v0',
+             'BoxPushingBruceSparse-v0']
 
 for _v in _versions:
     _name = _v.split("-")
@@ -480,7 +481,7 @@ for _v in _versions:
     kwargs_dict_box_pushing_promp['controller_kwargs']['p_gains'] = 0.01 * np.array([120., 120., 120., 120., 50., 30., 10.])
     kwargs_dict_box_pushing_promp['controller_kwargs']['d_gains'] = 0.01 * np.array([10., 10., 10., 10., 6., 5., 3.])
     kwargs_dict_box_pushing_promp['basis_generator_kwargs']['basis_bandwidth_factor'] = 2 # 3.5, 4 to try
-    kwargs_dict_box_pushing_promp['black_box_kwargs']['discount_factor'] = 0.99
+    kwargs_dict_box_pushing_promp['black_box_kwargs']['discount_factor'] = 1.0
 
     register(
         id=_env_id,
