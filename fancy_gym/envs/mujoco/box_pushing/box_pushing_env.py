@@ -88,6 +88,8 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
             'is_success': True if episode_end and box_goal_pos_dist < 0.05 and box_goal_quat_dist < 0.5 else False,
             'num_steps': self._steps,
             # 'box_end_vel': 0. if not episode_end else np.linalg.norm(self.data.qpos[:7])
+            'end_box_pos_vel': np.linalg.norm(self._get_box_vel()[3:]),
+            'end_box_rot_vel': np.linalg.norm(self._get_box_vel()[:3])
         }
         return obs, reward, episode_end, infos
 
@@ -430,8 +432,8 @@ class BoxPushingBruceSparse(BoxPushingEnvBase):
         return reward
 
     def _get_end_vel_penalty(self):
-        rot_coeff = 100.
-        pos_coeff = 100.
+        rot_coeff = 150.
+        pos_coeff = 150.
         box_rot_pos_vel = self._get_box_vel()
         box_rot_vel = box_rot_pos_vel[:3]
         box_pos_vel = box_rot_pos_vel[3:]
