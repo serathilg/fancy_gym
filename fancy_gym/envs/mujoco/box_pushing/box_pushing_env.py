@@ -87,9 +87,9 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
             'episode_energy': 0. if not episode_end else self._episode_energy,
             'is_success': True if episode_end and box_goal_pos_dist < 0.05 and box_goal_quat_dist < 0.5 else False,
             'num_steps': self._steps,
-            # 'box_end_vel': 0. if not episode_end else np.linalg.norm(self.data.qpos[:7])
-            'end_box_pos_vel': np.linalg.norm(self._get_box_vel()[3:]),
-            'end_box_rot_vel': np.linalg.norm(self._get_box_vel()[:3])
+            'end_joint_vel': 0. if not episode_end else np.linalg.norm(qvel),
+            'end_box_pos_vel': 0. if not episode_end else np.linalg.norm(self._get_box_vel()[3:]),
+            'end_box_rot_vel': 0. if not episode_end else np.linalg.norm(self._get_box_vel()[:3])
         }
         return obs, reward, episode_end, infos
 
@@ -317,23 +317,20 @@ class BoxPushingTemporalSparse(BoxPushingEnvBase):
                     rod_tip_pos, rod_quat, qpos, qvel, action):
         reward = 0.
         joint_penalty = self._joint_limit_violate_penalty(qpos, qvel, enable_pos_limit=True, enable_vel_limit=True)
-        energy_cost = -0.02 * np.sum(np.square(action))
-        tcp_box_dist_reward = -2 * np.clip(np.linalg.norm(box_pos - rod_tip_pos), 0.05, 100)
-        reward += joint_penalty + tcp_box_dist_reward + energy_cost
-        rod_inclined_angle = rotation_distance(rod_quat, desired_rod_quat)
-
-        if rod_inclined_angle > np.pi / 4:
-            reward -= rod_inclined_angle / (np.pi)
+        energy_cost = -0.0005 * np.sum(np.square(action))
+        reward += joint_penalty + energy_cost
 
         if not episode_end:
             return reward
 
         box_goal_dist = np.linalg.norm(box_pos - target_pos)
 
-        box_goal_pos_dist_reward = -3.5 * box_goal_dist * 100
+        box_goal_pos_dist_reward = -350 * box_goal_dist
         box_goal_rot_dist_reward = -rotation_distance(box_quat, target_quat) / np.pi * 100
 
-        reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward
+        ep_end_joint_vel = -50 * np.linalg.norm(qvel)
+
+        reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward + ep_end_joint_vel
 
         return reward
 
@@ -379,18 +376,13 @@ class BoxPushingTemporalSpatialSparse2(BoxPushingEnvBase):
         reward = 0.
         joint_penalty = self._joint_limit_violate_penalty(qpos, qvel, enable_pos_limit=True, enable_vel_limit=True)
         energy_cost = -0.0005 * np.sum(np.square(action))
-        tcp_box_dist_reward = -2 * np.clip(np.linalg.norm(box_pos - rod_tip_pos), 0.05, 100)
-        reward += joint_penalty + tcp_box_dist_reward + energy_cost
-        rod_inclined_angle = rotation_distance(rod_quat, desired_rod_quat)
-
-        if rod_inclined_angle > np.pi / 4:
-            reward -= rod_inclined_angle / (np.pi)
+        reward += joint_penalty + energy_cost
 
         if not episode_end:
             return reward
 
         # Force the robot to stop at the end
-        reward += self._velocity_reward()
+        reward += -50. * np.linalg.norm(qvel)
 
         box_goal_dist = np.linalg.norm(box_pos - target_pos)
 
@@ -402,10 +394,6 @@ class BoxPushingTemporalSpatialSparse2(BoxPushingEnvBase):
             reward -= 300
 
         return reward
-
-    def _velocity_reward(self):
-        vel = self.data.qvel[:7].copy()
-        return -50. * np.linalg.norm(vel)
 
 
 class BoxPushingBruceSparse(BoxPushingEnvBase):
@@ -443,7 +431,7 @@ class BoxPushingBruceSparse(BoxPushingEnvBase):
 
 if __name__=="__main__":
     import fancy_gym
-    env = fancy_gym.make("BoxPushingBruceSparse-v0", seed=0)
+    env = fancy_gym.make("BoxPushingTemporalSpatialSparse2-v0", seed=0)
     env.reset()
     for i in range(1000):
         env.render()
