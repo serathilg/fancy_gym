@@ -318,7 +318,13 @@ class BoxPushingTemporalSparse(BoxPushingEnvBase):
         reward = 0.
         joint_penalty = self._joint_limit_violate_penalty(qpos, qvel, enable_pos_limit=True, enable_vel_limit=True)
         energy_cost = -0.0005 * np.sum(np.square(action))
-        reward += joint_penalty + energy_cost
+        tcp_box_dist_reward = -2 * np.clip(np.linalg.norm(box_pos - rod_tip_pos), 0.05, 100)
+
+        reward += joint_penalty + energy_cost + tcp_box_dist_reward
+
+        rod_inclined_angle = rotation_distance(rod_quat, desired_rod_quat)
+        if rod_inclined_angle > np.pi / 4:
+            reward -= rod_inclined_angle / (np.pi)
 
         if not episode_end:
             return reward
@@ -376,7 +382,14 @@ class BoxPushingTemporalSpatialSparse2(BoxPushingEnvBase):
         reward = 0.
         joint_penalty = self._joint_limit_violate_penalty(qpos, qvel, enable_pos_limit=True, enable_vel_limit=True)
         energy_cost = -0.0005 * np.sum(np.square(action))
-        reward += joint_penalty + energy_cost
+        tcp_box_dist_reward = -2 * np.clip(np.linalg.norm(box_pos - rod_tip_pos), 0.05, 100)
+
+        reward += joint_penalty + energy_cost + tcp_box_dist_reward
+
+        rod_inclined_angle = rotation_distance(rod_quat, desired_rod_quat)
+
+        if rod_inclined_angle > np.pi / 4:
+            reward -= rod_inclined_angle / (np.pi)
 
         if not episode_end:
             return reward
