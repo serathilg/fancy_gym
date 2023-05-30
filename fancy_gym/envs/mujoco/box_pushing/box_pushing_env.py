@@ -325,10 +325,10 @@ class BoxPushingTemporalSparse(BoxPushingEnvBase):
 
         box_goal_dist = np.linalg.norm(box_pos - target_pos)
 
-        box_goal_pos_dist_reward = -350 * box_goal_dist
-        box_goal_rot_dist_reward = -rotation_distance(box_quat, target_quat) / np.pi * 100
+        box_goal_pos_dist_reward = -350. * box_goal_dist
+        box_goal_rot_dist_reward = -rotation_distance(box_quat, target_quat) / np.pi * 100.
 
-        ep_end_joint_vel = -50 * np.linalg.norm(qvel)
+        ep_end_joint_vel = -50. * np.linalg.norm(qvel)
 
         reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward + ep_end_joint_vel
 
@@ -387,11 +387,11 @@ class BoxPushingTemporalSpatialSparse2(BoxPushingEnvBase):
         box_goal_dist = np.linalg.norm(box_pos - target_pos)
 
         if box_goal_dist < 0.1:
-            box_goal_pos_dist_reward = np.clip(- 350 * box_goal_dist, -200, 0)
-            box_goal_rot_dist_reward = np.clip(- rotation_distance(box_quat, target_quat)/np.pi * 100, -100, 0)
+            box_goal_pos_dist_reward = np.clip(- 350. * box_goal_dist, -200, 0)
+            box_goal_rot_dist_reward = np.clip(- rotation_distance(box_quat, target_quat)/np.pi * 100., -100, 0)
             reward += box_goal_pos_dist_reward + box_goal_rot_dist_reward
         else:
-            reward -= 300
+            reward -= 300.
 
         return reward
 
