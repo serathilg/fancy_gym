@@ -33,7 +33,7 @@ def example_mp(env_name="HoleReacherProMP-v0", seed=1, iterations=1, render=True
             # Just make sure the correct mode is set before executing the step.
             env.render(mode="human")
         else:
-            env.render()
+            env.render(mode=None)
 
         # Now the action space is not the raw action but the parametrization of the trajectory generator,
         # such as a ProMP
@@ -157,17 +157,17 @@ def example_fully_custom_mp(seed=1, iterations=1, render=True):
 if __name__ == '__main__':
     render = True
     # DMP
-    # example_mp("HoleReacherDMP-v0", seed=10, iterations=5, render=render)
+    example_mp("HoleReacherDMP-v0", seed=10, iterations=5, render=render)
 
     # ProMP
-    # example_mp("HoleReacherProMP-v0", seed=10, iterations=5, render=render)
-    example_mp("BoxPushingBruceSparseReplanProDMP-v0", seed=10, iterations=10, render=render)
+    example_mp("HoleReacherProMP-v0", seed=10, iterations=5, render=render)
+    example_mp("BoxPushingTemporalSparseProMP-v0", seed=10, iterations=1, render=render)
 
     # ProDMP
-    # example_mp("BoxPushingDenseReplanProDMP-v0", seed=10, iterations=4, render=render)
+    example_mp("BoxPushingDenseReplanProDMP-v0", seed=10, iterations=4, render=render)
 
     # Altered basis functions
-    # obs1 = example_custom_mp("Reacher5dProMP-v0", seed=10, iterations=1, render=render)
+    obs1 = example_custom_mp("Reacher5dProMP-v0", seed=10, iterations=1, render=render)
 
     # Custom MP
-    # example_fully_custom_mp(seed=10, iterations=1, render=render)
+    example_fully_custom_mp(seed=10, iterations=1, render=render)

@@ -232,6 +232,7 @@ for reward_type in ["Dense", "TemporalSparse", "TemporalSpatialSparse", "Tempora
         id='BoxPushing{}-v0'.format(reward_type),
         entry_point='fancy_gym.envs.mujoco:BoxPushing{}'.format(reward_type),
         max_episode_steps=MAX_EPISODE_STEPS_BOX_PUSHING,
+        kwargs={'goal_switch_time': 20}
     )
 
 # Here we use the same reward as in BeerPong-v0, but now consider after the release,
@@ -508,6 +509,7 @@ for _v in _versions:
     kwargs_dict_box_pushing_prodmp['black_box_kwargs']['max_planning_times'] = 4
     kwargs_dict_box_pushing_prodmp['black_box_kwargs']['replanning_schedule'] = lambda pos, vel, obs, action, t : t % 25 == 0
     kwargs_dict_box_pushing_prodmp['black_box_kwargs']['condition_on_desired'] = True
+    kwargs_dict_box_pushing_prodmp['goal_switch_time'] = 49
     register(
         id=_env_id,
         entry_point='fancy_gym.utils.make_env_helpers:make_bb_env_helper',
