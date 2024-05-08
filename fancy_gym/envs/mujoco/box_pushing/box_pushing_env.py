@@ -26,7 +26,7 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
     3. time-spatial-depend sparse reward
     """
 
-    def __init__(self, frame_skip: int = 10, random_init: bool = False):
+    def __init__(self, frame_skip: int = 10, random_init: bool = False, goal_switch_time: int = None):
         utils.EzPickle.__init__(**locals())
         self._steps = 0
         self.init_qpos_box_pushing = np.array([0., 0., 0., -1.5, 0., 1.5, 0., 0., 0., 0.6, 0.45, 0.0, 1., 0., 0., 0.])
@@ -40,6 +40,8 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
 
         self._episode_energy = 0.
         self.random_init = random_init
+        self._goal_switch_time = goal_switch_time
+
         MujocoEnv.__init__(self,
                            model_path=os.path.join(os.path.dirname(__file__), "assets", "box_pushing.xml"),
                            frame_skip=self.frame_skip,
@@ -49,6 +51,21 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
     def step(self, action):
         action = 10 * np.clip(action, self.action_space.low, self.action_space.high)
         resultant_action = np.clip(action + self.data.qfrc_bias[:7].copy(), -q_torque_max, q_torque_max)
+
+        if self._goal_switch_time is not None and self._steps == self._goal_switch_time:
+            old_target_pos = self.data.body("target_pos").xpos[:-1].copy()
+            new_target_pos = old_target_pos + self.np_random.uniform(low=-0.25, high=0.2, size=2)
+            while new_target_pos[0] < 0.4 or new_target_pos[0] > 0.6 or abs(new_target_pos[1]) > 0.45:
+                new_target_pos = old_target_pos + self.np_random.uniform(low=-0.25, high=0.2, size=2)
+
+            old_target_quat = self.data.body("target_pos").xquat.copy()
+            new_target_quat = rot_to_quat(self.np_random.uniform(low=0, high=np.pi * 2), np.array([0, 0, 1]))
+            while new_target_quat is None or rotation_distance(new_target_quat, old_target_quat) > np.pi / 2.:
+                new_target_quat = rot_to_quat(self.np_random.uniform(low=0, high=np.pi * 2), np.array([0, 0, 1]))
+
+            self.model.body_pos[3] = np.concatenate([new_target_pos, np.array([-0.01])])
+            self.model.body_quat[3] = new_target_quat
+            mujoco.mj_forward(self.model, self.data)
 
         unstable_simulation = False
 
@@ -87,7 +104,10 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
             'box_goal_rot_dist': box_goal_quat_dist,
             'episode_energy': 0. if not episode_end else self._episode_energy,
             'is_success': True if episode_end and box_goal_pos_dist < 0.05 and box_goal_quat_dist < 0.5 else False,
-            'num_steps': self._steps
+            'num_steps': self._steps,
+            'end_joint_vel': 0. if not episode_end else np.linalg.norm(qvel),
+            'end_box_pos_vel': 0. if not episode_end else np.linalg.norm(self._get_box_vel()[3:]),
+            'end_box_rot_vel': 0. if not episode_end else np.linalg.norm(self._get_box_vel()[:3])
         }
         return obs, reward, episode_end, infos
 
@@ -285,8 +305,8 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
         return q
 
 class BoxPushingDense(BoxPushingEnvBase):
-    def __init__(self, frame_skip: int = 10, random_init: bool = False):
-        super(BoxPushingDense, self).__init__(frame_skip=frame_skip, random_init=random_init)
+    def __init__(self, frame_skip: int = 10, random_init: bool = False, goal_switch_time: int = None):
+        super(BoxPushingDense, self).__init__(frame_skip=frame_skip, random_init=random_init, goal_switch_time=goal_switch_time)
     def _get_reward(self, episode_end, box_pos, box_quat, target_pos, target_quat,
                     rod_tip_pos, rod_quat, qpos, qvel, action):
         joint_penalty = self._joint_limit_violate_penalty(qpos,
@@ -308,8 +328,8 @@ class BoxPushingDense(BoxPushingEnvBase):
         return reward
 
 class BoxPushingTemporalSparse(BoxPushingEnvBase):
-    def __init__(self, frame_skip: int = 10, random_init: bool = False):
-        super(BoxPushingTemporalSparse, self).__init__(frame_skip=frame_skip, random_init=random_init)
+    def __init__(self, frame_skip: int = 10, random_init: bool = False, goal_switch_time: int = None):
+        super(BoxPushingTemporalSparse, self).__init__(frame_skip=frame_skip, random_init=random_init, goal_switch_time=goal_switch_time)
 
     def _get_reward(self, episode_end, box_pos, box_quat, target_pos, target_quat,
                     rod_tip_pos, rod_quat, qpos, qvel, action):
@@ -317,9 +337,10 @@ class BoxPushingTemporalSparse(BoxPushingEnvBase):
         joint_penalty = self._joint_limit_violate_penalty(qpos, qvel, enable_pos_limit=True, enable_vel_limit=True)
         energy_cost = -0.02 * np.sum(np.square(action))
         tcp_box_dist_reward = -2 * np.clip(np.linalg.norm(box_pos - rod_tip_pos), 0.05, 100)
-        reward += joint_penalty + tcp_box_dist_reward + energy_cost
-        rod_inclined_angle = rotation_distance(rod_quat, desired_rod_quat)
 
+        reward += joint_penalty + energy_cost + tcp_box_dist_reward
+
+        rod_inclined_angle = rotation_distance(rod_quat, desired_rod_quat)
         if rod_inclined_angle > np.pi / 4:
             reward -= rod_inclined_angle / (np.pi)
 
@@ -328,8 +349,8 @@ class BoxPushingTemporalSparse(BoxPushingEnvBase):
 
         box_goal_dist = np.linalg.norm(box_pos - target_pos)
 
-        box_goal_pos_dist_reward = -3.5 * box_goal_dist * 100
-        box_goal_rot_dist_reward = -rotation_distance(box_quat, target_quat) / np.pi * 100
+        box_goal_pos_dist_reward = -350. * box_goal_dist
+        box_goal_rot_dist_reward = -rotation_distance(box_quat, target_quat) / np.pi * 100.
 
         ep_end_joint_vel = -50. * np.linalg.norm(qvel)
 
@@ -340,8 +361,8 @@ class BoxPushingTemporalSparse(BoxPushingEnvBase):
 
 class BoxPushingTemporalSpatialSparse(BoxPushingEnvBase):
 
-    def __init__(self, frame_skip: int = 10, random_init: bool = False):
-        super(BoxPushingTemporalSpatialSparse, self).__init__(frame_skip=frame_skip, random_init=random_init)
+    def __init__(self, frame_skip: int = 10, random_init: bool = False, goal_switch_time: int = None):
+        super(BoxPushingTemporalSpatialSparse, self).__init__(frame_skip=frame_skip, random_init=random_init, goal_switch_time=goal_switch_time)
 
     def _get_reward(self, episode_end, box_pos, box_quat, target_pos, target_quat,
                     rod_tip_pos, rod_quat, qpos, qvel, action):
@@ -435,3 +456,16 @@ class BoxPushingNoConstraintSparse(BoxPushingEnvBase):
         box_rot_vel = box_rot_pos_vel[:3]
         box_pos_vel = box_rot_pos_vel[3:]
         return -rot_coeff * np.linalg.norm(box_rot_vel) - pos_coeff * np.linalg.norm(box_pos_vel)
+
+
+
+if __name__=="__main__":
+    import fancy_gym
+    env = fancy_gym.make("BoxPushingTemporalSparseReplanProDMP-v0", seed=0)
+    env.reset()
+    for i in range(1000):
+        env.render(mode="human")
+        obs, rew, done, info = env.step(env.action_space.sample())
+        if done:
+            env.reset()
+            # print(f"box_end_velocity: {info['box_end_vel']}")
