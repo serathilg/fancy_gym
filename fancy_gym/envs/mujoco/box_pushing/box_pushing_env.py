@@ -161,7 +161,8 @@ class BoxPushingEnvBase(MujocoEnv, utils.EzPickle):
             self.data.body("box_0").xpos.copy(),  # position of box
             self.data.body("box_0").xquat.copy(),  # orientation of box
             self.data.body("replan_target_pos").xpos.copy(),  # position of target
-            self.data.body("replan_target_pos").xquat.copy()  # orientation of target
+            self.data.body("replan_target_pos").xquat.copy(),  # orientation of target
+            [(self._steps / MAX_EPISODE_STEPS_BOX_PUSHING) * 2 - 1]  # episode progress
         ])
         return obs
 

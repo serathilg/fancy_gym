@@ -46,7 +46,7 @@ class ReacherEnv(MujocoEnv, utils.EzPickle):
         reward = reward_dist + reward_ctrl + angular_vel
         self.do_simulation(action, self.frame_skip)
         ob = self._get_obs()
-        done = False
+        done = self.sparse and self._steps >= MAX_EPISODE_STEPS_REACHER
 
         infos = dict(
             reward_dist=reward_dist,
@@ -75,7 +75,7 @@ class ReacherEnv(MujocoEnv, utils.EzPickle):
         )
         while True:
             # full space
-            self.goal = self.np_random.uniform(low=-self.n_links / 10, high=self.n_links / 10, size=2)
+            # self.goal = self.np_random.uniform(low=-self.n_links / 10, high=self.n_links / 10, size=2)
             # I Quadrant
             # self.goal = self.np_random.uniform(low=0, high=self.n_links / 10, size=2)
             # II Quadrant
@@ -83,7 +83,7 @@ class ReacherEnv(MujocoEnv, utils.EzPickle):
             # II + III Quadrant
             # self.goal = self.np_random.uniform(low=-self.n_links / 10, high=[0, self.n_links / 10], size=2)
             # I + II Quadrant
-            # self.goal = self.np_random.uniform(low=[-self.n_links / 10, 0], high=self.n_links, size=2)
+            self.goal = self.np_random.uniform(low=[-self.n_links / 10, 0], high=self.n_links, size=2)
             if np.linalg.norm(self.goal) < self.n_links / 10:
                 break
 
@@ -101,10 +101,11 @@ class ReacherEnv(MujocoEnv, utils.EzPickle):
     def _get_obs(self):
         theta = self.data.qpos.flat[:self.n_links]
         target = self.get_body_com("target")
+        episode_progress = [(self._steps / MAX_EPISODE_STEPS_REACHER) * 2 - 1]
         return np.concatenate([
             np.cos(theta),
             np.sin(theta),
             target[:2],  # x-y of goal position
             self.data.qvel.flat[:self.n_links],  # angular velocity
             self.get_body_com("fingertip") - target,  # goal distance
-        ])
+        ] + ([episode_progress] if self.sparse else []))
