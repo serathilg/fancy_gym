@@ -190,6 +190,17 @@ register(
 )
 
 register(
+    id="HopperJumpImmediateSparse-v0",
+    entry_point="fancy_gym.envs.mujoco:HopperJumpImmediateSparse",
+    max_episode_steps=MAX_EPISODE_STEPS_HOPPERJUMP,
+    kwargs={
+        "max_height_from_min": False,
+        "delayed_contact_penalty": True,
+        "contact_baseline": 5.0,
+    },
+)
+
+register(
     id='AntJump-v0',
     entry_point='fancy_gym.envs.mujoco:AntJumpEnv',
     max_episode_steps=MAX_EPISODE_STEPS_ANTJUMP,
