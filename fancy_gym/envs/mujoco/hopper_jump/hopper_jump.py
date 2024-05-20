@@ -267,11 +267,11 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
     - dense healthy
     - contact distance immediately at contact
     - improvement of max height, i.e. max(0, current - previous_max_height)
-    - dense goal distance change since last step
+    - dense goal distance change since last step (old_dist - new_dist)
 
     previous_max_height=0 at reset
 
-    contact and max height need a baseline to improve from, several options:
+    contact, max height and goal need a baseline to improve from, several options:
 
     max_height_from_min: bool
     - False: first step gets reward of height after first step (~init).
@@ -286,6 +286,21 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
         terminal reward -x if no second contact, else -dist at contact
     - False, None: x := first/fall contact distance,
         reward x-dist at second contact
+
+    goal_baseline: Optional[float]
+    Initial goal distance at reset from which changes are computed, affects first reward
+    and summed reward over episode.
+    - None: Distance of reset state to goal as baseline, summed episode reward is
+        reset_dist - final_dist
+    - float x: first step reward is x - first_dist (might be fairly negative), summed reward
+        is x - final_dist (and hence equal to sparse reward -final_dist for x=0)
+
+
+    healthy_delta: bool
+    Whether to give absolute healthy state or change of healthiness
+    - false: Dense healhty reward if currently healthy
+    - true: Sparse healthy reward if healthy state has changed, reset as unhealthy such that
+        summed undiscounted reward is final healthy status
     """
 
     def __init__(
@@ -293,6 +308,8 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
         max_height_from_min: bool = False,
         delayed_contact_penalty: bool = True,
         contact_baseline: Optional[float] = 5.0,
+        goal_baseline: Optional[float] = 0.0,
+        healthy_delta: bool = True,
         xml_file="hopper_jump.xml",
         forward_reward_weight=1.0,
         ctrl_cost_weight=1e-3,
@@ -310,6 +327,8 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
         self.max_height_from_min = max_height_from_min
         self.delayed_contact_penalty = delayed_contact_penalty
         self.contact_baseline = contact_baseline
+        self.goal_baseline = goal_baseline
+        self.healthy_delta = healthy_delta
 
         self._prev_height: float = float("-inf")
         self._max_height_after_min: float = 0.0
@@ -318,6 +337,8 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
         self._last_dist_of_init_contact: Optional[float] = None
 
         self._prev_goal_dist: float = float("-inf")
+
+        self._prev_healthy_reward: float = 0.0
 
         super().__init__(
             xml_file=xml_file,
@@ -426,9 +447,13 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
             else direct_contacts_dist_reduction
         )
 
-        # healthy reward is dense but other rewards sum to sparse, so scale
-        # by MAX_EPISODE_STEPS_HOPPERJUMP to maintain same ratios.
-        healthy_reward = self.healthy_reward / MAX_EPISODE_STEPS_HOPPERJUMP
+        if self.healthy_delta:
+            healthy_reward = self.healthy_reward - self._prev_healthy_reward
+            self._prev_healthy_reward = self.healthy_reward
+        else:
+            # healthy reward is dense but other rewards sum to sparse, so scale
+            # by MAX_EPISODE_STEPS_HOPPERJUMP to maintain same ratios.
+            healthy_reward = self.healthy_reward / MAX_EPISODE_STEPS_HOPPERJUMP
         distance_reward = goal_dist_reduction * self._dist_weight
         height_reward = (
             height_improvement_after_min
@@ -468,6 +493,10 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
 
         self._last_dist_of_init_contact = None
 
-        self._prev_goal_dist = np.linalg.norm(self._get_foot_pos() - self.goal)
+        self._prev_goal_dist = self.goal_baseline or np.linalg.norm(
+            self._get_foot_pos() - self.goal
+        )
+
+        self._prev_healthy_reward = 0.0
 
         return observation
