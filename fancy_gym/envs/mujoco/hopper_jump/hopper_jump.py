@@ -257,6 +257,10 @@ class HopperJumpEnv(HopperEnv):
 #         return observation, reward, done, info
 
 
+def unwrap_or(val: Optional[float], default: float) -> float:
+    return val if val is not None else default
+
+
 class HopperJumpImmediateSparse(HopperJumpEnv):
     """
     Split sparse reward into immediate improvements/changes such that
@@ -393,8 +397,8 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
         if self.init_floor_contact and not self.has_left_floor:
             self.has_left_floor = not has_floor_contact
             if not self.has_left_floor:
-                self._last_dist_of_init_contact = np.linalg.norm(
-                    site_pos_after - self.goal
+                self._last_dist_of_init_contact = float(
+                    np.linalg.norm(site_pos_after - self.goal)
                 )
         if not self.contact_with_floor and self.has_left_floor:
             self.contact_with_floor = has_floor_contact
@@ -407,7 +411,7 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
             # continuous fall, final height as reward
             height_improvement_after_min = height_after
 
-        goal_dist = np.linalg.norm(site_pos_after - self.goal)
+        goal_dist = float(np.linalg.norm(site_pos_after - self.goal))
         goal_dist_reduction = self._prev_goal_dist - goal_dist
         self._prev_goal_dist = goal_dist
 
@@ -423,19 +427,21 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
         elif done and self.contact_dist is None:
             # never jumped (or not yet landed) -> baseline penalty
             # if we somehow manage to not even land once (headstand?) then large dist 100 penalty
-            delayed_contacts_dist_reduction = -(
-                self.contact_baseline or self._last_dist_of_init_contact or 100.0
+            delayed_contacts_dist_reduction = -unwrap_or(
+                self.contact_baseline, unwrap_or(self._last_dist_of_init_contact, 100.0)
             )
         else:
             delayed_contacts_dist_reduction = 0.0
 
         # contact reward with only improvement at second contact
         if second_contact_now:
-            # use baseline if set, otherwise dist of first contact
-            jump_start_dist = self.contact_baseline or self._last_dist_of_init_contact
             assert (
-                jump_start_dist is not None
+                self._last_dist_of_init_contact is not None
             ), "Impossible, second contact requires first contact."
+            # use baseline if set, otherwise dist of first contact
+            jump_start_dist = unwrap_or(
+                self.contact_baseline, self._last_dist_of_init_contact
+            )
             # reduction of distance as reward immediately
             direct_contacts_dist_reduction = jump_start_dist - self.contact_dist
         else:
@@ -477,7 +483,7 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
             height_rew=height_reward,
             healthy_reward=healthy_reward,
             healthy=self.is_healthy,
-            contact_dist=self.contact_dist or 0,
+            contact_dist=unwrap_or(self.contact_dist, 0.0),
             contacts_dist_reduction=contacts_dist_reduction,
             delayed_contacts_dist_reduction=delayed_contacts_dist_reduction,
             direct_contacts_dist_reduction=direct_contacts_dist_reduction,
@@ -493,8 +499,8 @@ class HopperJumpImmediateSparse(HopperJumpEnv):
 
         self._last_dist_of_init_contact = None
 
-        self._prev_goal_dist = self.goal_baseline or np.linalg.norm(
-            self._get_foot_pos() - self.goal
+        self._prev_goal_dist = unwrap_or(
+            self.goal_baseline, float(np.linalg.norm(self._get_foot_pos() - self.goal))
         )
 
         self._prev_healthy_reward = 0.0
